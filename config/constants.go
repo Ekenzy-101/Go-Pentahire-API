@@ -1,6 +1,8 @@
 package config
 
 const (
-	AccessTokenName  = "pnt_acc_token"
-	RefreshTokenName = "pnt_ref_token"
+	AccessTokenCookieName    = "pnt_acc_token"
+	AccessTokenTTLInSeconds  = 60 * 60
+	RefreshTokenCookieName   = "pnt_ref_token"
+	RefreshTokenTTLInSeconds = 60 * 60 * 24 * 7
 )

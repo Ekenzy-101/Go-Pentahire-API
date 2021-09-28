@@ -25,7 +25,9 @@ func CreatePostgresConnectionPool() *pgxpool.Pool {
 	err = connectionPool.Ping(ctx)
 	helpers.ExitIfError(err)
 
-	log.Println("Successfully connected to PostgreSQL database")
+	if !config.IsTesting {
+		log.Println("Successfully connected to PostgreSQL database")
+	}
 	return connectionPool
 }
 
