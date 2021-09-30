@@ -29,14 +29,14 @@ type User struct {
 	ID            string    `json:"id"`
 	AverageRating float64   `json:"average_rating"`
 	CreatedAt     time.Time `json:"created_at"`
-	Email         string    `json:"email" binding:"email,max=255"`
+	Email         string    `json:"email,omitempty" binding:"email,max=255"`
 	// Favourites      []interface{} `json:"favourites"`
-	Firstname       string `json:"firstname" binding:"required,name,max=50"`
+	Firstname       string `json:"firstname,omitempty" binding:"required,name,max=50"`
 	Image           string `json:"image"`
 	Is2FAEnabled    bool   `json:"is_2fa_enabled"`
 	IsEmailVerified bool   `json:"is_email_verified"`
 	IsPhoneVerified bool   `json:"is_phone_verified"`
-	Lastname        string `json:"lastname" binding:"required,name,max=50"`
+	Lastname        string `json:"lastname,omitempty" binding:"required,name,max=50"`
 	OTPSecretKey    string `json:"otp_secret_key,omitempty"`
 	Password        string `json:"password,omitempty" binding:"required,min=8,max=128,password"`
 	TripsCount      int    `json:"trips_count"`

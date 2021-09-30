@@ -3,3 +3,4 @@
 *.zip
 .dccache
 *.conf
+*workspace*

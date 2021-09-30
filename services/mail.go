@@ -15,8 +15,11 @@ type MailOption struct {
 }
 
 func SendMail(options MailOption) (*rest.Response, error) {
-	from := mail.NewEmail("PentaHire", config.SendgridSender)
+	if config.IsTesting {
+		return &rest.Response{StatusCode: 200}, nil
+	}
 
+	from := mail.NewEmail("PentaHire", config.SendgridSender)
 	personalization := mail.NewPersonalization()
 	personalization.AddTos(options.To)
 	for key, value := range options.Data {
