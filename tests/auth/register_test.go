@@ -6,14 +6,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 
 	"github.com/Ekenzy-101/Pentahire-API/helpers"
 	"github.com/Ekenzy-101/Pentahire-API/models"
 	"github.com/Ekenzy-101/Pentahire-API/routes"
-	"github.com/Ekenzy-101/Pentahire-API/services"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v4/pgxpool"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -24,7 +21,6 @@ var _ = Describe("POST /auth/register", func() {
 		firstname    string
 		lastname     string
 		password     string
-		pool         *pgxpool.Pool
 		responseBody gin.H
 	)
 
@@ -56,10 +52,6 @@ var _ = Describe("POST /auth/register", func() {
 		return response, nil
 	}
 
-	BeforeSuite(func() {
-		pool = services.CreatePostgresConnectionPool()
-	})
-
 	BeforeEach(func() {
 		email = "test@test.com"
 		firstname = "Test"
@@ -81,7 +73,7 @@ var _ = Describe("POST /auth/register", func() {
 		By("returning a status code of 200")
 		Expect(response).To(HaveHTTPStatus(http.StatusOK))
 
-		By("returning a body which contains the user's info")
+		By("returning a body that contains the user's info")
 		actual := helpers.GetMapKeys(responseBody["user"])
 		elements := helpers.GetStructFields(models.User{}, []interface{}{"password", "otp_secret_key"})
 		Expect(actual).To(ContainElements(elements...))
@@ -102,7 +94,7 @@ var _ = Describe("POST /auth/register", func() {
 		By("returning a status code of 400")
 		Expect(response).To(HaveHTTPStatus(http.StatusBadRequest))
 
-		By("returning a body which contains error messages")
+		By("returning a body that contains error messages")
 		actual := helpers.GetMapKeys(responseBody)
 		elements := []interface{}{"email", "firstname", "lastname", "password"}
 		Expect(actual).To(ContainElements(elements...))
@@ -110,12 +102,13 @@ var _ = Describe("POST /auth/register", func() {
 
 	It("should be an error", func() {
 		By("sending a request with an email that already exists")
-		sqlResponse := models.CreateUserRow(context.Background(), &models.User{
-			Email:     email,
-			Password:  password,
-			Firstname: firstname,
-			Lastname:  lastname,
-		})
+		sqlOption := models.SQLOption{
+			Arguments:     []interface{}{email, firstname, lastname, password},
+			InsertColumns: []string{"email", "firstname", "lastname", "password"},
+			ReturnColumns: []string{"email"},
+			Destination:   []interface{}{&email},
+		}
+		sqlResponse := models.CreateUserRow(context.Background(), sqlOption)
 		Expect(sqlResponse).To(BeNil())
 
 		response, err := ExecuteRequest()
@@ -124,16 +117,7 @@ var _ = Describe("POST /auth/register", func() {
 		By("returning a status code of 400")
 		Expect(response).To(HaveHTTPStatus(http.StatusBadRequest))
 
-		By("returning a body which contains error messages")
+		By("returning a body that contains error messages")
 		Expect(responseBody).To(HaveKey("message"))
 	})
-
-	AfterSuite(func() {
-		pool.Close()
-	})
 })
-
-func TestRegisterSuite(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Register Suite")
-}
