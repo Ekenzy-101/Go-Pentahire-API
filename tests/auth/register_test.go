@@ -2,7 +2,6 @@ package tests
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +60,10 @@ var _ = Describe("POST /auth/register", func() {
 	})
 
 	AfterEach(func() {
-		_, err := pool.Exec(context.Background(), "DELETE FROM users; DELETE FROM verify_email;")
+		_, err := pool.Exec(ctx, "DELETE FROM users")
+		Expect(err).NotTo(HaveOccurred())
+
+		err = redisClient.FlushDBAsync(ctx).Err()
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -102,13 +104,13 @@ var _ = Describe("POST /auth/register", func() {
 
 	It("should be an error", func() {
 		By("sending a request with an email that already exists")
-		sqlOption := models.SQLOption{
+		options := models.SQLOptions{
 			Arguments:     []interface{}{email, firstname, lastname, password},
 			InsertColumns: []string{"email", "firstname", "lastname", "password"},
 			ReturnColumns: []string{"email"},
 			Destination:   []interface{}{&email},
 		}
-		sqlResponse := models.CreateUserRow(context.Background(), sqlOption)
+		sqlResponse := models.InsertUserRow(ctx, options)
 		Expect(sqlResponse).To(BeNil())
 
 		response, err := ExecuteRequest()
