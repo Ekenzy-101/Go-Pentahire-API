@@ -3,10 +3,9 @@ package models
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/Ekenzy-101/Pentahire-API/config"
 	"github.com/Ekenzy-101/Pentahire-API/services"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
@@ -14,18 +13,13 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-func CreateUserRow(ctx context.Context, option SQLOption) *SQLResponse {
-	params := []string{}
-	for i := 0; i < len(option.InsertColumns); i++ {
-		params = append(params, fmt.Sprintf("$%v", i+1))
-	}
-	paramString := strings.Join(params, ", ")
-	insertColumns := strings.Join(option.InsertColumns, ", ")
-	returnColumns := strings.Join(option.ReturnColumns, ", ")
+func InsertUserRow(ctx context.Context, options SQLOptions) *SQLResponse {
+	options.TableName = config.UsersTable
+	options.Statement = InsertStatement
 
-	sql := fmt.Sprintf(`INSERT INTO users (%v) VALUES (%v) RETURNING  %v`, insertColumns, paramString, returnColumns)
+	sql := buildQuery(options)
 	pool := services.GetPostgresConnectionPool()
-	err := pool.QueryRow(ctx, sql, option.Arguments...).Scan(option.Destination...)
+	err := pool.QueryRow(ctx, sql, options.Arguments...).Scan(options.Destination...)
 	pgErr := new(pgconn.PgError)
 	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 		return &SQLResponse{
@@ -44,10 +38,20 @@ func CreateUserRow(ctx context.Context, option SQLOption) *SQLResponse {
 	return nil
 }
 
-func CreateVerifyEmailRow(ctx context.Context, args []interface{}) *SQLResponse {
-	sql := `INSERT INTO verify_email (user_id, token) VALUES ($1, $2)`
+func SelectUserRow(ctx context.Context, options SQLOptions) *SQLResponse {
+	options.Statement = SelectStatement
+	options.TableName = config.UsersTable
+
+	sql := buildQuery(options)
 	pool := services.GetPostgresConnectionPool()
-	_, err := pool.Exec(ctx, sql, args...)
+	err := pool.QueryRow(ctx, sql, options.Arguments...).Scan(options.Destination...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return &SQLResponse{
+			StatusCode: http.StatusNotFound,
+			Body:       gin.H{"message": "User not found"},
+		}
+	}
+
 	if err != nil {
 		return &SQLResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -58,11 +62,13 @@ func CreateVerifyEmailRow(ctx context.Context, args []interface{}) *SQLResponse 
 	return nil
 }
 
-func FindUserRow(ctx context.Context, option SQLOption) *SQLResponse {
-	returnColumns := strings.Join(option.ReturnColumns, ", ")
-	sql := fmt.Sprintf(`SELECT %v FROM users %v`, returnColumns, option.AfterTableClauses)
+func UpdateAndReturnUserRow(ctx context.Context, options SQLOptions) *SQLResponse {
+	options.Statement = UpdateStatement
+	options.TableName = config.UsersTable
+
+	sql := buildQuery(options)
 	pool := services.GetPostgresConnectionPool()
-	err := pool.QueryRow(ctx, sql, option.Arguments...).Scan(option.Destination...)
+	err := pool.QueryRow(ctx, sql, options.Arguments...).Scan(options.Destination...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &SQLResponse{
 			StatusCode: http.StatusNotFound,

@@ -21,6 +21,7 @@ var (
 	ClientOrigin            string
 	DatabaseURL             string
 	Port                    string
+	RedisURL                string
 	RefreshTokenSecret      string
 	ResetPasswordTemplateID string
 	SendgridAPIKey          string
@@ -51,6 +52,7 @@ func init() {
 	ClientOrigin = os.Getenv("CLIENT_ORIGIN")
 	DatabaseURL = os.Getenv("DATABASE_URL")
 	Port = os.Getenv("PORT")
+	RedisURL = os.Getenv("REDIS_URL")
 	RefreshTokenSecret = os.Getenv("REFRESH_TOKEN_SECRET")
 	ResetPasswordTemplateID = os.Getenv("RESET_PASSWORD_TEMPLATE_ID")
 	SendgridAPIKey = os.Getenv("SENDGRID_API_KEY")
