@@ -20,6 +20,7 @@ var (
 	AWSBucket               string
 	ClientOrigin            string
 	DatabaseURL             string
+	HCaptchaSecretKey       string
 	Port                    string
 	RedisURL                string
 	RefreshTokenSecret      string
@@ -51,6 +52,7 @@ func init() {
 	AWSBucket = os.Getenv("AWS_BUCKET")
 	ClientOrigin = os.Getenv("CLIENT_ORIGIN")
 	DatabaseURL = os.Getenv("DATABASE_URL")
+	HCaptchaSecretKey = os.Getenv("HCAPTCHA_SECRET_KEY")
 	Port = os.Getenv("PORT")
 	RedisURL = os.Getenv("REDIS_URL")
 	RefreshTokenSecret = os.Getenv("REFRESH_TOKEN_SECRET")

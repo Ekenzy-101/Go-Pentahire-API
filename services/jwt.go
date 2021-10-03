@@ -2,32 +2,32 @@ package services
 
 import "github.com/golang-jwt/jwt/v4"
 
-type JWTOption struct {
+type JWTOptions struct {
 	jwt.SigningMethod
 	Claims jwt.Claims
 	Secret string
 	Token  string
 }
 
-type AccessTokenClaim struct {
+type AccessTokenClaims struct {
 	Email string `json:"email"`
 	ID    string `json:"_id"`
 	jwt.RegisteredClaims
 }
 
-func SignToken(option JWTOption) (string, error) {
-	token := jwt.NewWithClaims(option.SigningMethod, option.Claims)
-	signedToken, err := token.SignedString([]byte(option.Secret))
+func SignJWTToken(options JWTOptions) (string, error) {
+	token := jwt.NewWithClaims(options.SigningMethod, options.Claims)
+	signedToken, err := token.SignedString([]byte(options.Secret))
 
 	return signedToken, err
 }
 
-func VerifyToken(option JWTOption) (jwt.Claims, error) {
+func VerifyJWTToken(options JWTOptions) (jwt.Claims, error) {
 	token, err := jwt.ParseWithClaims(
-		option.Token,
-		option.Claims,
+		options.Token,
+		options.Claims,
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte(option.Secret), nil
+			return []byte(options.Secret), nil
 		},
 	)
 

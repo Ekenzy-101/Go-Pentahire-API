@@ -21,6 +21,13 @@ type LoginRequestBody struct {
 	Password string `json:"password" binding:"required,min=8,max=128,password"`
 }
 
+type RegisterRequestBody struct {
+	Firstname     string `json:"firstname" binding:"required,name,max=50"`
+	Lastname      string `json:"lastname" binding:"required,name,max=50"`
+	HCaptchaToken string `json:"hcaptcha_token"`
+	LoginRequestBody
+}
+
 type ResetPasswordRequestBody struct {
 	Token    string `json:"token" binding:"required"`
 	Password string `json:"password" binding:"required,min=8,max=128,password"`
@@ -119,26 +126,45 @@ func Login(c *gin.Context) {
 }
 
 func Logout(c *gin.Context) {
-
+	c.SetCookie(config.AccessTokenCookieName, "", -1, "/", "", config.IsProduction, true)
+	c.JSON(http.StatusOK, gin.H{"message": "Success"})
 }
 
 func Register(c *gin.Context) {
-	user := &models.User{}
-	messages := helpers.ValidateRequestBody(c, user)
+	requestBody := &RegisterRequestBody{}
+	messages := helpers.ValidateRequestBody(c, requestBody)
 	if messages != nil {
 		c.JSON(http.StatusBadRequest, messages)
 		return
 	}
 
-	user.NormalizeFields(true)
-	err := user.HashPassword()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	hCaptchaResponseBody, err := services.VerifyHCaptchaToken(ctx, requestBody.HCaptchaToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	log.Println("HCaptchaErrorCodes", hCaptchaResponseBody.ErrorCodes)
+	if !hCaptchaResponseBody.Success {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Please provide a valid hcaptcha token"})
+		return
+	}
+
+	user := &models.User{
+		Email:     requestBody.Email,
+		Firstname: requestBody.Firstname,
+		Lastname:  requestBody.Lastname,
+		Password:  requestBody.Password,
+	}
+	user.NormalizeFields(true)
+	err = user.HashPassword()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
 
 	sqlOption := models.SQLOptions{
 		Arguments:     []interface{}{strings.ToLower(user.Email), user.Firstname, user.Lastname, user.Password},
@@ -159,7 +185,7 @@ func Register(c *gin.Context) {
 	}
 
 	redisClient := services.GetRedisClient()
-	err = redisClient.Set(ctx, config.RedisVerifyEmailPrefix+token, user.ID, 24*time.Hour).Err()
+	err = redisClient.Set(ctx, config.RedisVerifyEmailPrefix+token, user.ID, config.RedisVerifyEmailTTL).Err()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -194,7 +220,7 @@ func ResetPassword(c *gin.Context) {
 	defer cancel()
 
 	redisClient := services.GetRedisClient()
-	userId, err := redisClient.GetEx(ctx, config.RedisResetPasswordPrefix+requestBody.Token, 0).Result()
+	userId, err := redisClient.GetEx(ctx, config.RedisResetPasswordPrefix+requestBody.Token, time.Millisecond).Result()
 	if errors.Is(err, redis.Nil) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Token has expired or is not valid"})
 		return

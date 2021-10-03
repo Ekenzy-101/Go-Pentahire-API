@@ -29,16 +29,16 @@ type User struct {
 	ID              string    `json:"id"`
 	AverageRating   float64   `json:"average_rating"`
 	CreatedAt       time.Time `json:"created_at"`
-	Email           string    `json:"email,omitempty" binding:"email,max=255"`
-	Firstname       string    `json:"firstname,omitempty" binding:"required,name,max=50"`
+	Email           string    `json:"email,omitempty"`
+	Firstname       string    `json:"firstname,omitempty"`
 	Image           string    `json:"image"`
 	Is2FAEnabled    bool      `json:"is_2fa_enabled"`
 	IsEmailVerified bool      `json:"is_email_verified"`
 	IsPhoneVerified bool      `json:"is_phone_verified"`
-	Lastname        string    `json:"lastname,omitempty" binding:"required,name,max=50"`
+	Lastname        string    `json:"lastname,omitempty"`
 	OTPSecretKey    string    `json:"otp_secret_key,omitempty"`
 	PhoneNo         string    `json:"phone_no,omitempty"`
-	Password        string    `json:"password,omitempty" binding:"required,min=8,max=128,password"`
+	Password        string    `json:"password,omitempty"`
 	TripsCount      int       `json:"trips_count"`
 }
 
@@ -78,7 +78,7 @@ func (user *User) ComparePassword(password string) (bool, error) {
 }
 
 func (user *User) GenerateAccessToken() (string, error) {
-	claims := &services.AccessTokenClaim{
+	claims := &services.AccessTokenClaims{
 		Email: user.Email,
 		ID:    user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -87,12 +87,12 @@ func (user *User) GenerateAccessToken() (string, error) {
 		},
 	}
 
-	option := services.JWTOption{
+	option := services.JWTOptions{
 		SigningMethod: jwt.SigningMethodHS256,
 		Claims:        claims,
 		Secret:        config.AccessTokenSecret,
 	}
-	return services.SignToken(option)
+	return services.SignJWTToken(option)
 }
 
 func (user *User) HashPassword() error {

@@ -16,19 +16,21 @@ import (
 
 var _ = Describe("POST /auth/register", func() {
 	var (
-		email        string
-		firstname    string
-		lastname     string
-		password     string
-		responseBody gin.H
+		email         string
+		firstname     string
+		lastname      string
+		password      string
+		hCaptchaToken string
+		responseBody  gin.H
 	)
 
 	var ExecuteRequest = func() (*httptest.ResponseRecorder, error) {
 		requestBodyMap := gin.H{
-			"email":     email,
-			"password":  password,
-			"firstname": firstname,
-			"lastname":  lastname,
+			"email":          email,
+			"password":       password,
+			"firstname":      firstname,
+			"lastname":       lastname,
+			"hcaptcha_token": hCaptchaToken,
 		}
 		requestBodyBytes, err := json.Marshal(requestBodyMap)
 		if err != nil {
@@ -54,6 +56,7 @@ var _ = Describe("POST /auth/register", func() {
 	BeforeEach(func() {
 		email = "test@test.com"
 		firstname = "Test"
+		hCaptchaToken = "10000000-aaaa-bbbb-cccc-000000000001"
 		lastname = "Test"
 		password = "Testing@123"
 		responseBody = gin.H{}
@@ -68,7 +71,7 @@ var _ = Describe("POST /auth/register", func() {
 	})
 
 	It("should be a success", func() {
-		By("sending a request with valid inputs")
+		By("sending a request with valid user inputs and hcaptcha token")
 		response, err := ExecuteRequest()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -85,7 +88,7 @@ var _ = Describe("POST /auth/register", func() {
 	})
 
 	It("should be an error", func() {
-		By("sending a request with invalid inputs")
+		By("sending a request with invalid user inputs")
 		email = "invalid email"
 		password = "invalid password"
 		firstname = "1234"
@@ -100,6 +103,19 @@ var _ = Describe("POST /auth/register", func() {
 		actual := helpers.GetMapKeys(responseBody)
 		elements := []interface{}{"email", "firstname", "lastname", "password"}
 		Expect(actual).To(ContainElements(elements...))
+	})
+
+	It("should be an error", func() {
+		By("sending a request with an invalid hcaptcha token")
+		hCaptchaToken = "invalid token"
+		response, err := ExecuteRequest()
+		Expect(err).NotTo(HaveOccurred())
+
+		By("returning a status code of 400")
+		Expect(response).To(HaveHTTPStatus(http.StatusBadRequest))
+
+		By("returning a body that contains error messages")
+		Expect(responseBody).To(HaveKey("message"))
 	})
 
 	It("should be an error", func() {
