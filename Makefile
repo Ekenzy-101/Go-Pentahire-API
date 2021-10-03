@@ -1,7 +1,7 @@
 GIN_MODE=$(shell printenv GIN_MODE)
 
 integration-test:
-	@GIN_MODE=test ginkgo watch --randomizeAllSpecs -v ./tests/...
+	@GIN_MODE=test ginkgo --randomizeAllSpecs -v ./tests/...
 
 migrate:
 	@tern migrate -m ./migrations -c ./tern$(GIN_MODE).conf

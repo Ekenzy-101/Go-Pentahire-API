@@ -37,6 +37,7 @@ func SetupRouter() *gin.Engine {
 
 	notification := router.Group("/notification")
 	notification.POST("/verify-email", handlers.VerifyEmail)
+	notification.POST("/forgot-password", handlers.ForgotPassword)
 
 	return router
 }

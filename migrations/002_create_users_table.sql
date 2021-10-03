@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   image TEXT DEFAULT '' NOT NULL,
   lastname TEXT NOT NULL,
   password TEXT NOT NULL,
+  phone_no TEXT DEFAULT '' NOT NULL,
   phone_verified_at TIMESTAMPTZ,
   otp_secret_key TEXT DEFAULT '' NOT NULL,
   trips_count INT DEFAULT 0 NOT NULL
