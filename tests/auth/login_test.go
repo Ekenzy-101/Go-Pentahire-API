@@ -83,7 +83,7 @@ var _ = Describe("POST /auth/login", func() {
 
 		By("returning a body that contains the user's info if user's 2FA is disabled")
 		actual := helpers.GetMapKeys(responseBody["user"])
-		elements := helpers.GetStructFields(models.User{}, []interface{}{"password", "otp_secret_key"})
+		elements := helpers.GetStructFields(models.User{}, []interface{}{"password", "otp_secret_key", "phone_no"})
 		Expect(actual).To(ContainElements(elements...))
 
 		By("returning cookies if user's 2FA is disabled")

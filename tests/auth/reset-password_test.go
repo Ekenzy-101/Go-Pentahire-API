@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"time"
 
 	"github.com/Ekenzy-101/Pentahire-API/config"
 	"github.com/Ekenzy-101/Pentahire-API/helpers"
 	"github.com/Ekenzy-101/Pentahire-API/models"
 	"github.com/Ekenzy-101/Pentahire-API/routes"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -72,7 +72,7 @@ var _ = Describe("POST /auth/reset-password", func() {
 		sqlResponse := models.InsertUserRow(ctx, options)
 		Expect(sqlResponse).To(BeNil())
 
-		err := redisClient.Set(ctx, config.RedisResetPasswordPrefix+token, userId, 1*time.Hour).Err()
+		err := redisClient.Set(ctx, config.RedisResetPasswordPrefix+token, userId, config.RedisResetPasswordTTL).Err()
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -92,9 +92,13 @@ var _ = Describe("POST /auth/reset-password", func() {
 		By("returning a status code of 200")
 		Expect(response).To(HaveHTTPStatus(http.StatusOK))
 
+		By("clearing token key from redis")
+		err = redisClient.Get(ctx, config.RedisResetPasswordPrefix+token).Err()
+		Expect(err).To(MatchError(redis.Nil))
+
 		By("returning a body that contains the user's info if user's 2FA is disabled")
 		actual := helpers.GetMapKeys(responseBody["user"])
-		elements := helpers.GetStructFields(models.User{}, []interface{}{"password", "otp_secret_key"})
+		elements := helpers.GetStructFields(models.User{}, []interface{}{"password", "otp_secret_key", "phone_no"})
 		Expect(actual).To(ContainElements(elements...))
 
 		By("returning cookies if user's 2FA is disabled")
@@ -114,6 +118,10 @@ var _ = Describe("POST /auth/reset-password", func() {
 
 			By("returning a status code of 204")
 			Expect(response).To(HaveHTTPStatus(http.StatusNoContent))
+
+			By("clearing token key from redis")
+			err = redisClient.Get(ctx, config.RedisResetPasswordPrefix+token).Err()
+			Expect(err).To(MatchError(redis.Nil))
 
 			By("returning an empty body if user's 2FA is enabled")
 			Expect(response).To(HaveHTTPBody([]byte(nil)))
@@ -154,7 +162,7 @@ var _ = Describe("POST /auth/reset-password", func() {
 
 	It("should be an error", func() {
 		By("sending a request when user is not found")
-		err := redisClient.Set(ctx, config.RedisResetPasswordPrefix+token, uuid.NewString(), 1*time.Hour).Err()
+		err := redisClient.Set(ctx, config.RedisResetPasswordPrefix+token, uuid.NewString(), config.RedisResetPasswordTTL).Err()
 		Expect(err).NotTo(HaveOccurred())
 
 		response, err := ExecuteRequest()
