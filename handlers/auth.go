@@ -48,29 +48,7 @@ func Login(c *gin.Context) {
 	option := models.SQLOptions{
 		Arguments:         []interface{}{requestBody.Email},
 		AfterTableClauses: `WHERE email = $1`,
-		ReturnColumns: []string{
-			"id",
-			"average_rating",
-			"created_at",
-			"email",
-			"firstname",
-			"image",
-			`CASE 
-  			WHEN otp_secret_key = '' THEN CAST ('false' AS BOOLEAN)
-  			ELSE CAST('true' AS BOOLEAN)
-			END AS is_2fa_enabled`,
-			`CASE 
-  			WHEN email_verified_at IS NULL THEN CAST ('false' AS BOOLEAN)
-  			ELSE CAST('true' AS BOOLEAN)
-			END AS is_email_verified`,
-			`CASE 
-  			WHEN phone_verified_at IS NULL THEN CAST ('false' AS BOOLEAN)
-  			ELSE CAST('true' AS BOOLEAN)
-			END AS is_phone_verified`,
-			"lastname",
-			"password",
-			"trips_count",
-		},
+		ReturnColumns:     helpers.GenerateUserReturnColumns([]string{}),
 		Destination: []interface{}{
 			&user.ID,
 			&user.AverageRating,
@@ -83,6 +61,7 @@ func Login(c *gin.Context) {
 			&user.IsPhoneVerified,
 			&user.Lastname,
 			&user.Password,
+			&user.PhoneNo,
 			&user.TripsCount,
 		},
 	}
@@ -128,6 +107,50 @@ func Login(c *gin.Context) {
 func Logout(c *gin.Context) {
 	c.SetCookie(config.AccessTokenCookieName, "", -1, "/", "", config.IsProduction, true)
 	c.JSON(http.StatusOK, gin.H{"message": "Success"})
+}
+
+func Me(c *gin.Context) {
+	value, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusOK, gin.H{"user": nil})
+		return
+	}
+
+	payload, ok := value.(*services.AccessTokenClaims)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"user": nil})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user := &models.User{ID: payload.ID}
+	options := models.SQLOptions{
+		AfterTableClauses: "WHERE id = $1",
+		Arguments:         []interface{}{payload.ID},
+		ReturnColumns:     helpers.GenerateUserReturnColumns([]string{"id", "password"}),
+		Destination: []interface{}{
+			&user.AverageRating,
+			&user.CreatedAt,
+			&user.Email,
+			&user.Firstname,
+			&user.Image,
+			&user.Is2FAEnabled,
+			&user.IsEmailVerified,
+			&user.IsPhoneVerified,
+			&user.Lastname,
+			&user.PhoneNo,
+			&user.TripsCount,
+		},
+	}
+	sqlResponse := models.SelectUserRow(ctx, options)
+	if sqlResponse != nil {
+		c.JSON(http.StatusOK, gin.H{"user": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
 func Register(c *gin.Context) {
@@ -241,28 +264,7 @@ func ResetPassword(c *gin.Context) {
 	option := models.SQLOptions{
 		Arguments:         []interface{}{user.Password, user.ID},
 		AfterTableClauses: `SET password = $1 WHERE id = $2`,
-		ReturnColumns: []string{
-			"average_rating",
-			"created_at",
-			"email",
-			"firstname",
-			"image",
-			`CASE 
-  			WHEN otp_secret_key = '' THEN CAST ('false' AS BOOLEAN)
-  			ELSE CAST('true' AS BOOLEAN)
-			END AS is_2fa_enabled`,
-			`CASE 
-  			WHEN email_verified_at IS NULL THEN CAST ('false' AS BOOLEAN)
-  			ELSE CAST('true' AS BOOLEAN)
-			END AS is_email_verified`,
-			`CASE 
-  			WHEN phone_verified_at IS NULL THEN CAST ('false' AS BOOLEAN)
-  			ELSE CAST('true' AS BOOLEAN)
-			END AS is_phone_verified`,
-			"lastname",
-			"password",
-			"trips_count",
-		},
+		ReturnColumns:     helpers.GenerateUserReturnColumns([]string{"id"}),
 		Destination: []interface{}{
 			&user.AverageRating,
 			&user.CreatedAt,
@@ -274,6 +276,7 @@ func ResetPassword(c *gin.Context) {
 			&user.IsPhoneVerified,
 			&user.Lastname,
 			&user.Password,
+			&user.PhoneNo,
 			&user.TripsCount,
 		},
 	}

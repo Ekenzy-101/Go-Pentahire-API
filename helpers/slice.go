@@ -52,3 +52,38 @@ func GetStructFields(value interface{}, exclude []interface{}) []interface{} {
 
 	return fields
 }
+
+func GenerateUserReturnColumns(excludedColumns []string) []string {
+	allColumns := []string{
+		"id",
+		"average_rating",
+		"created_at",
+		"email",
+		"firstname",
+		"image",
+		`CASE 
+  			WHEN otp_secret_key = '' THEN CAST ('false' AS BOOLEAN)
+  			ELSE CAST('true' AS BOOLEAN)
+			END AS is_2fa_enabled`,
+		`CASE 
+  			WHEN email_verified_at IS NULL THEN CAST ('false' AS BOOLEAN)
+  			ELSE CAST('true' AS BOOLEAN)
+			END AS is_email_verified`,
+		`CASE 
+  			WHEN phone_verified_at IS NULL THEN CAST ('false' AS BOOLEAN)
+  			ELSE CAST('true' AS BOOLEAN)
+			END AS is_phone_verified`,
+		"lastname",
+		"password",
+		"phone_no",
+		"trips_count",
+	}
+
+	includedColumns := []string{}
+	for _, returnColumn := range allColumns {
+		if !ContainsSuffix(excludedColumns, returnColumn) {
+			includedColumns = append(includedColumns, returnColumn)
+		}
+	}
+	return includedColumns
+}
