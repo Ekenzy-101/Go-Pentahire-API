@@ -16,21 +16,21 @@ import (
 
 var _ = Describe("POST /auth/register", func() {
 	var (
-		email         string
-		firstname     string
-		lastname      string
-		password      string
-		hCaptchaToken string
-		responseBody  gin.H
+		email        string
+		firstname    string
+		lastname     string
+		password     string
+		token        string
+		responseBody gin.H
 	)
 
 	var ExecuteRequest = func() (*httptest.ResponseRecorder, error) {
 		requestBodyMap := gin.H{
-			"email":          email,
-			"password":       password,
-			"firstname":      firstname,
-			"lastname":       lastname,
-			"hcaptcha_token": hCaptchaToken,
+			"email":     email,
+			"password":  password,
+			"firstname": firstname,
+			"lastname":  lastname,
+			"token":     token,
 		}
 		requestBodyBytes, err := json.Marshal(requestBodyMap)
 		if err != nil {
@@ -56,7 +56,7 @@ var _ = Describe("POST /auth/register", func() {
 	BeforeEach(func() {
 		email = "test@test.com"
 		firstname = "Test"
-		hCaptchaToken = "10000000-aaaa-bbbb-cccc-000000000001"
+		token = "10000000-aaaa-bbbb-cccc-000000000001"
 		lastname = "Test"
 		password = "Testing@123"
 		responseBody = gin.H{}
@@ -93,6 +93,7 @@ var _ = Describe("POST /auth/register", func() {
 		password = "invalid password"
 		firstname = "1234"
 		lastname = "1234"
+		token = ""
 		response, err := ExecuteRequest()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -101,13 +102,13 @@ var _ = Describe("POST /auth/register", func() {
 
 		By("returning a body that contains error messages")
 		actual := helpers.GetMapKeys(responseBody)
-		elements := []interface{}{"email", "firstname", "lastname", "password"}
+		elements := []interface{}{"email", "firstname", "lastname", "password", "message"}
 		Expect(actual).To(ContainElements(elements...))
 	})
 
 	It("should be an error", func() {
 		By("sending a request with an invalid hcaptcha token")
-		hCaptchaToken = "invalid token"
+		token = "invalid token"
 		response, err := ExecuteRequest()
 		Expect(err).NotTo(HaveOccurred())
 

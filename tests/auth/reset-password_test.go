@@ -143,7 +143,7 @@ var _ = Describe("POST /auth/reset-password", func() {
 
 		By("returning a body that contains error messages")
 		actual := helpers.GetMapKeys(responseBody)
-		elements := []interface{}{"password", "token"}
+		elements := []interface{}{"password", "message"}
 		Expect(actual).To(ContainElements(elements...))
 	})
 
