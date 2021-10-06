@@ -62,6 +62,6 @@ func init() {
 	VerifyEmailTemplateID = os.Getenv("VERIFY_EMAIL_TEMPLATE_ID")
 
 	if Port == "" {
-		Port = "6000"
+		Port = "5000"
 	}
 }

@@ -30,7 +30,12 @@ func GenerateErrorMessages(errors validator.ValidationErrors) map[string]string 
 		case "password":
 			messages[field] = fmt.Sprintf("%v should be a mix of uppercase, lowercase, numeric and special characters", strings.Title(field))
 		case "required":
-			messages[field] = fmt.Sprintf("%v is required", strings.Title(field))
+			if field == "token" {
+				// Make things easier on the frontend
+				messages["message"] = fmt.Sprintf("%v is required", strings.Title(field))
+			} else {
+				messages[field] = fmt.Sprintf("%v is required", strings.Title(field))
+			}
 		default:
 			messages[field] = fmt.Sprintf("%v is invalid", strings.Title(field))
 		}

@@ -16,23 +16,6 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type LoginRequestBody struct {
-	Email    string `json:"email" binding:"email,max=255"`
-	Password string `json:"password" binding:"required,min=8,max=128,password"`
-}
-
-type RegisterRequestBody struct {
-	Firstname     string `json:"firstname" binding:"required,name,max=50"`
-	Lastname      string `json:"lastname" binding:"required,name,max=50"`
-	HCaptchaToken string `json:"hcaptcha_token"`
-	LoginRequestBody
-}
-
-type ResetPasswordRequestBody struct {
-	Token    string `json:"token" binding:"required"`
-	Password string `json:"password" binding:"required,min=8,max=128,password"`
-}
-
 func Login(c *gin.Context) {
 	requestBody := &LoginRequestBody{}
 	messages := helpers.ValidateRequestBody(c, requestBody)
@@ -164,7 +147,7 @@ func Register(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	hCaptchaResponseBody, err := services.VerifyHCaptchaToken(ctx, requestBody.HCaptchaToken)
+	hCaptchaResponseBody, err := services.VerifyHCaptchaToken(ctx, requestBody.Token)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -261,7 +244,7 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	option := models.SQLOptions{
+	options := models.SQLOptions{
 		Arguments:         []interface{}{user.Password, user.ID},
 		AfterTableClauses: `SET password = $1 WHERE id = $2`,
 		ReturnColumns:     helpers.GenerateUserReturnColumns([]string{"id"}),
@@ -280,7 +263,7 @@ func ResetPassword(c *gin.Context) {
 			&user.TripsCount,
 		},
 	}
-	response := models.UpdateAndReturnUserRow(ctx, option)
+	response := models.UpdateAndReturnUserRow(ctx, options)
 	if response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return

@@ -12,12 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type EmailRequestBody struct {
-	Email string `json:"email" binding:"email,max=255"`
-}
-
 func ForgotPassword(c *gin.Context) {
-	requestBody := &EmailRequestBody{}
+	requestBody := &EmailField{}
 	messages := helpers.ValidateRequestBody(c, requestBody)
 	if messages != nil {
 		c.JSON(http.StatusBadRequest, messages)
@@ -67,7 +63,7 @@ func ForgotPassword(c *gin.Context) {
 }
 
 func VerifyEmail(c *gin.Context) {
-	requestBody := &EmailRequestBody{}
+	requestBody := &EmailField{}
 	messages := helpers.ValidateRequestBody(c, requestBody)
 	if messages != nil {
 		c.JSON(http.StatusBadRequest, messages)
