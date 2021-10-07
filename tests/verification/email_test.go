@@ -73,7 +73,7 @@ var _ = Describe("POST /verification/email", func() {
 	})
 
 	It("should be a success", func() {
-		By("sending a request with an valid token")
+		By("sending a request with a valid token")
 		response, err := ExecuteRequest()
 		Expect(err).NotTo(HaveOccurred())
 
