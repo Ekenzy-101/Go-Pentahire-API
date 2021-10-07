@@ -19,6 +19,13 @@ func GenerateErrorMessages(errors validator.ValidationErrors) map[string]string 
 			messages[field] = fmt.Sprintf("%v is not a valid email address", strings.Title(field))
 		case "gt":
 			messages[field] = fmt.Sprintf("%v should be greater than %v", strings.Title(field), err.Param())
+		case "len":
+			value := fmt.Sprintf("%v should be %v characters", strings.Title(field), err.Param())
+			if field == "code" {
+				messages["message"] = value
+			} else {
+				messages[field] = value
+			}
 		case "lte":
 			messages[field] = fmt.Sprintf("%v should not be greater than %v", strings.Title(field), err.Param())
 		case "max":
@@ -30,11 +37,12 @@ func GenerateErrorMessages(errors validator.ValidationErrors) map[string]string 
 		case "password":
 			messages[field] = fmt.Sprintf("%v should be a mix of uppercase, lowercase, numeric and special characters", strings.Title(field))
 		case "required":
-			if field == "token" {
-				// Make things easier on the frontend
-				messages["message"] = fmt.Sprintf("%v is required", strings.Title(field))
+			value := fmt.Sprintf("%v is required", strings.Title(field))
+			// Make things easier on the frontend
+			if field == "token" || field == "code" {
+				messages["message"] = value
 			} else {
-				messages[field] = fmt.Sprintf("%v is required", strings.Title(field))
+				messages[field] = value
 			}
 		default:
 			messages[field] = fmt.Sprintf("%v is invalid", strings.Title(field))

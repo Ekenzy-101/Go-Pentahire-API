@@ -1,5 +1,9 @@
 package handlers
 
+type CodeField struct {
+	Code string `json:"code" binding:"required,max=6"`
+}
+
 type EmailField struct {
 	Email string `json:"email" binding:"email,max=255"`
 }

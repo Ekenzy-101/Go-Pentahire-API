@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Ekenzy-101/Pentahire-API/helpers"
 	"github.com/Ekenzy-101/Pentahire-API/models"
 	"github.com/Ekenzy-101/Pentahire-API/services"
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,45 @@ import (
 
 func CloseAccount(c *gin.Context) {
 
+}
+
+func ConfirmOTPKey(c *gin.Context) {
+	authUser := c.MustGet("user")
+	cliams := authUser.(*services.AccessTokenClaims)
+	requestBody := &CodeField{}
+	if messages := helpers.ValidateRequestBody(c, requestBody); messages != nil {
+		c.JSON(http.StatusBadRequest, messages)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var emailVerifiedAt interface{}
+	secret := ""
+	options := models.SQLOptions{
+		Arguments:         []interface{}{cliams.ID},
+		AfterTableClauses: "WHERE id = $1",
+		ReturnColumns:     []string{"otp_secret_key", "email_verified_at"},
+		Destination:       []interface{}{&secret, &emailVerifiedAt},
+	}
+	response := models.SelectUserRow(ctx, options)
+	if response != nil {
+		c.JSON(response.StatusCode, response.Body)
+		return
+	}
+
+	if emailVerifiedAt == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Please verify your email address"})
+		return
+	}
+
+	if !services.ValidateOTP(requestBody.Code, secret) {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid verification code"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Success"})
 }
 
 func DeleteOTPKey(c *gin.Context) {
@@ -36,14 +76,6 @@ func DeleteOTPKey(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Success"})
 }
 
-func Disable2FA(c *gin.Context) {
-
-}
-
-func Enable2FA(c *gin.Context) {
-
-}
-
 func GetOTPKey(c *gin.Context) {
 	authUser := c.MustGet("user")
 	cliams := authUser.(*services.AccessTokenClaims)
@@ -58,13 +90,12 @@ func GetOTPKey(c *gin.Context) {
 		ReturnColumns:     []string{"email"},
 		Destination:       []interface{}{&email},
 	}
-	response := models.SelectUserRow(ctx, options)
-	if response != nil {
+	if response := models.SelectUserRow(ctx, options); response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return
 	}
 
-	key, err := services.GenerateOTP(email)
+	key, err := services.GenerateOTPKey(email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -72,8 +103,7 @@ func GetOTPKey(c *gin.Context) {
 
 	options.Arguments = []interface{}{key.Secret(), cliams.ID}
 	options.AfterTableClauses = "SET otp_secret_key = $1 WHERE id = $2"
-	response = models.UpdateAndReturnUserRow(ctx, options)
-	if response != nil {
+	if response := models.UpdateAndReturnUserRow(ctx, options); response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return
 	}

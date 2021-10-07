@@ -33,6 +33,7 @@ func SetupRouter() *gin.Engine {
 	accountRouter := router.Group("/account").Use(Authorizer(true))
 	accountRouter.DELETE("/otp-key", handlers.DeleteOTPKey)
 	accountRouter.GET("/otp-key", handlers.GetOTPKey)
+	accountRouter.POST("/otp-key/confirm", handlers.ConfirmOTPKey)
 
 	authRouter := router.Group("/auth")
 	authRouter.POST("/login", handlers.Login)

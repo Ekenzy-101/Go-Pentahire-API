@@ -5,15 +5,27 @@ import (
 	"math/big"
 )
 
+const (
+	numbers = "0123456789"
+	letters = numbers + "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+)
+
+func GenerateRandomNumbers(length int) (string, error) {
+	return generateRandomFromSeed(length, numbers)
+}
+
 func GenerateRandomToken(length int) (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	ret := make([]byte, length)
+	return generateRandomFromSeed(length, letters)
+}
+
+func generateRandomFromSeed(length int, seed string) (string, error) {
+	byteSlice := make([]byte, length)
 	for i := 0; i < length; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(seed))))
 		if err != nil {
 			return "", err
 		}
-		ret[i] = letters[num.Int64()]
+		byteSlice[i] = seed[num.Int64()]
 	}
-	return string(ret), nil
+	return string(byteSlice), nil
 }
