@@ -30,6 +30,10 @@ func SetupRouter() *gin.Engine {
 		c.JSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("%v operation is not supported for resource %v", c.Request.Method, c.Request.URL.Path)})
 	})
 
+	accountRouter := router.Group("/account").Use(Authorizer(true))
+	accountRouter.DELETE("/otp-key", handlers.DeleteOTPKey)
+	accountRouter.GET("/otp-key", handlers.GetOTPKey)
+
 	authRouter := router.Group("/auth")
 	authRouter.POST("/login", handlers.Login)
 	authRouter.POST("/logout", handlers.Logout)
