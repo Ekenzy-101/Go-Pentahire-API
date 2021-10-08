@@ -18,8 +18,7 @@ import (
 
 func Login(c *gin.Context) {
 	requestBody := &LoginRequestBody{}
-	messages := helpers.ValidateRequestBody(c, requestBody)
-	if messages != nil {
+	if messages := helpers.ValidateRequestBody(c, requestBody); messages != nil {
 		c.JSON(http.StatusBadRequest, messages)
 		return
 	}
@@ -28,7 +27,7 @@ func Login(c *gin.Context) {
 	defer cancel()
 
 	user := &models.User{}
-	option := models.SQLOptions{
+	options := models.SQLOptions{
 		Arguments:         []interface{}{requestBody.Email},
 		AfterTableClauses: `WHERE email = $1`,
 		ReturnColumns:     helpers.GenerateUserReturnColumns([]string{}),
@@ -48,14 +47,14 @@ func Login(c *gin.Context) {
 			&user.TripsCount,
 		},
 	}
-	sqlResponse := models.SelectUserRow(ctx, option)
-	if sqlResponse != nil && sqlResponse.StatusCode == http.StatusNotFound {
+	response := models.SelectUserRow(ctx, options)
+	if response != nil && response.StatusCode == http.StatusNotFound {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid email or password"})
 		return
 	}
 
-	if sqlResponse != nil {
-		c.JSON(sqlResponse.StatusCode, sqlResponse.Body)
+	if response != nil {
+		c.JSON(response.StatusCode, response.Body)
 		return
 	}
 
@@ -71,7 +70,20 @@ func Login(c *gin.Context) {
 	}
 
 	if user.Is2FAEnabled {
-		log.Println(user.Is2FAEnabled)
+		token, err := helpers.GenerateRandomToken(24)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		redisClient := services.GetRedisClient()
+		err = redisClient.Set(ctx, config.RedisVerifyLoginPrefix+user.Email, token, config.RedisVerifyLoginTTL).Err()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		c.SetCookie(config.VerifyLoginTokenCookieName, token, config.VerifyLoginTokenTTLInSeconds, "", "", config.IsProduction, true)
 		c.JSON(http.StatusNoContent, nil)
 		return
 	}
@@ -127,8 +139,8 @@ func Me(c *gin.Context) {
 			&user.TripsCount,
 		},
 	}
-	sqlResponse := models.SelectUserRow(ctx, options)
-	if sqlResponse != nil {
+	response := models.SelectUserRow(ctx, options)
+	if response != nil {
 		c.JSON(http.StatusOK, gin.H{"user": nil})
 		return
 	}
@@ -138,8 +150,7 @@ func Me(c *gin.Context) {
 
 func Register(c *gin.Context) {
 	requestBody := &RegisterRequestBody{}
-	messages := helpers.ValidateRequestBody(c, requestBody)
-	if messages != nil {
+	if messages := helpers.ValidateRequestBody(c, requestBody); messages != nil {
 		c.JSON(http.StatusBadRequest, messages)
 		return
 	}
@@ -166,20 +177,18 @@ func Register(c *gin.Context) {
 		Password:  requestBody.Password,
 	}
 	user.NormalizeFields(true)
-	err = user.HashPassword()
-	if err != nil {
+	if err = user.HashPassword(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
-	sqlOption := models.SQLOptions{
+	options := models.SQLOptions{
 		Arguments:     []interface{}{strings.ToLower(user.Email), user.Firstname, user.Lastname, user.Password},
 		InsertColumns: []string{"email", "firstname", "lastname", "password"},
 		ReturnColumns: []string{"id"},
 		Destination:   []interface{}{&user.ID},
 	}
-	response := models.InsertUserRow(ctx, sqlOption)
-	if response != nil {
+	if response := models.InsertUserRow(ctx, options); response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return
 	}
@@ -197,8 +206,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	err = user.SendEmailVerificationMail(token)
-	if err != nil {
+	if err = user.SendEmailVerificationMail(token); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
@@ -216,8 +224,7 @@ func Register(c *gin.Context) {
 
 func ResetPassword(c *gin.Context) {
 	requestBody := &ResetPasswordRequestBody{}
-	messages := helpers.ValidateRequestBody(c, requestBody)
-	if messages != nil {
+	if messages := helpers.ValidateRequestBody(c, requestBody); messages != nil {
 		c.JSON(http.StatusBadRequest, messages)
 		return
 	}
@@ -238,8 +245,7 @@ func ResetPassword(c *gin.Context) {
 	}
 
 	user := &models.User{ID: userId, Password: requestBody.Password}
-	err = user.HashPassword()
-	if err != nil {
+	if err = user.HashPassword(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
@@ -263,14 +269,12 @@ func ResetPassword(c *gin.Context) {
 			&user.TripsCount,
 		},
 	}
-	response := models.UpdateAndReturnUserRow(ctx, options)
-	if response != nil {
+	if response := models.UpdateAndReturnUserRow(ctx, options); response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return
 	}
 
 	if user.Is2FAEnabled {
-		log.Println(user.Is2FAEnabled)
 		c.JSON(http.StatusNoContent, nil)
 		return
 	}
@@ -282,6 +286,82 @@ func ResetPassword(c *gin.Context) {
 	}
 
 	user.Password = ""
+	c.SetCookie(config.AccessTokenCookieName, accessToken, config.AccessTokenTTLInSeconds, "", "", config.IsProduction, true)
+	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
+func VerifyLogin(c *gin.Context) {
+	cookieToken, err := c.Cookie(config.VerifyLoginTokenCookieName)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "No cookies found"})
+		return
+	}
+
+	requestBody := &VerifyLoginRequestBody{}
+	if messages := helpers.ValidateRequestBody(c, requestBody); messages != nil {
+		c.JSON(http.StatusBadRequest, messages)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	redisClient := services.GetRedisClient()
+	cacheToken, err := redisClient.GetEx(ctx, config.RedisVerifyLoginPrefix+requestBody.Email, time.Millisecond).Result()
+	if errors.Is(err, redis.Nil) {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	if cookieToken != cacheToken {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token"})
+		return
+	}
+
+	user := &models.User{}
+	returnColumns := helpers.GenerateUserReturnColumns([]string{"password"})
+	secret := ""
+	option := models.SQLOptions{
+		Arguments:         []interface{}{requestBody.Email},
+		AfterTableClauses: `WHERE email = $1`,
+		ReturnColumns:     append(returnColumns, "otp_secret_key"),
+		Destination: []interface{}{
+			&user.ID,
+			&user.AverageRating,
+			&user.CreatedAt,
+			&user.Email,
+			&user.Firstname,
+			&user.Image,
+			&user.Is2FAEnabled,
+			&user.IsEmailVerified,
+			&user.IsPhoneVerified,
+			&user.Lastname,
+			&user.PhoneNo,
+			&user.TripsCount,
+			&secret,
+		},
+	}
+	if response := models.SelectUserRow(ctx, option); response != nil {
+		c.JSON(response.StatusCode, response.Body)
+		return
+	}
+
+	if !services.ValidateOTP(requestBody.Code, secret) {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid verification code"})
+		return
+	}
+
+	accessToken, err := user.GenerateAccessToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
 	c.SetCookie(config.AccessTokenCookieName, accessToken, config.AccessTokenTTLInSeconds, "", "", config.IsProduction, true)
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }

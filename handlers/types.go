@@ -1,7 +1,7 @@
 package handlers
 
 type CodeField struct {
-	Code string `json:"code" binding:"required,max=6"`
+	Code string `json:"code" binding:"required,len=6"`
 }
 
 type EmailField struct {
@@ -31,4 +31,9 @@ type RegisterRequestBody struct {
 type ResetPasswordRequestBody struct {
 	TokenField
 	PasswordField
+}
+
+type VerifyLoginRequestBody struct {
+	EmailField
+	CodeField
 }
