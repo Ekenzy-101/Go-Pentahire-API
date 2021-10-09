@@ -35,8 +35,7 @@ func ConfirmOTPKey(c *gin.Context) {
 		ReturnColumns:     []string{"otp_secret_key", "email_verified_at"},
 		Destination:       []interface{}{&secret, &emailVerifiedAt},
 	}
-	response := models.SelectUserRow(ctx, options)
-	if response != nil {
+	if response := models.SelectUserRow(ctx, options); response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return
 	}
@@ -67,8 +66,7 @@ func DeleteOTPKey(c *gin.Context) {
 		ReturnColumns:     []string{"id"},
 		Destination:       []interface{}{&cliams.ID},
 	}
-	response := models.UpdateAndReturnUserRow(ctx, options)
-	if response != nil {
+	if response := models.UpdateAndReturnUserRow(ctx, options); response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return
 	}
@@ -112,7 +110,59 @@ func GetOTPKey(c *gin.Context) {
 }
 
 func UpdatePassword(c *gin.Context) {
+	authUser := c.MustGet("user")
+	cliams := authUser.(*services.AccessTokenClaims)
+	requestBody := &UpdatePasswordRequestBody{}
+	if messages := helpers.ValidateRequestBody(c, requestBody); messages != nil {
+		c.JSON(http.StatusBadRequest, messages)
+		return
+	}
 
+	if requestBody.NewPassword == requestBody.OldPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"new_password": "Create a new password that isn't your current password"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user := &models.User{}
+	options := models.SQLOptions{
+		Arguments:         []interface{}{cliams.ID},
+		AfterTableClauses: "WHERE id = $1",
+		ReturnColumns:     []string{"password"},
+		Destination:       []interface{}{&user.Password},
+	}
+	if response := models.SelectUserRow(ctx, options); response != nil {
+		c.JSON(response.StatusCode, response.Body)
+		return
+	}
+
+	matches, err := user.ComparePassword(requestBody.OldPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	if !matches {
+		c.JSON(http.StatusBadRequest, gin.H{"old_password": "Your current password was entered incorrectly. Please enter it again"})
+		return
+	}
+
+	user.Password = requestBody.NewPassword
+	if err = user.HashPassword(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	options.Arguments = []interface{}{user.Password, cliams.ID}
+	options.AfterTableClauses = "SET password = $1 WHERE id = $2"
+	if response := models.UpdateAndReturnUserRow(ctx, options); response != nil {
+		c.JSON(response.StatusCode, response.Body)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Success"})
 }
 
 func UpdateProfile(c *gin.Context) {
