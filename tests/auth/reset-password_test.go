@@ -19,7 +19,6 @@ import (
 
 var _ = Describe("POST /auth/reset-password", func() {
 	var (
-		OTPSecretKey string
 		password     string
 		token        string
 		userId       string
@@ -53,19 +52,14 @@ var _ = Describe("POST /auth/reset-password", func() {
 
 	BeforeEach(func() {
 		password = "Testing@123"
-		OTPSecretKey = ""
 		responseBody = gin.H{}
 		userId = uuid.NewString()
-
-		var err error
-		token, err = helpers.GenerateRandomToken(24)
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
 		options := models.SQLOptions{
-			Arguments:     []interface{}{"test2@test.com", "testing", "Test", "Test", OTPSecretKey},
-			InsertColumns: []string{"email", "password", "firstname", "lastname", "otp_secret_key"},
+			Arguments:     []interface{}{"test2@test.com", "testing", "Test", "Test"},
+			InsertColumns: []string{"email", "password", "firstname", "lastname"},
 			ReturnColumns: []string{"id"},
 			Destination:   []interface{}{&userId},
 		}
@@ -73,6 +67,9 @@ var _ = Describe("POST /auth/reset-password", func() {
 		Expect(sqlResponse).To(BeNil())
 
 		err := redisClient.Set(ctx, config.RedisResetPasswordPrefix+token, userId, config.RedisResetPasswordTTL).Err()
+		Expect(err).NotTo(HaveOccurred())
+
+		token, err = helpers.GenerateRandomToken(24)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -96,39 +93,8 @@ var _ = Describe("POST /auth/reset-password", func() {
 		err = redisClient.Get(ctx, config.RedisResetPasswordPrefix+token).Err()
 		Expect(err).To(MatchError(redis.Nil))
 
-		By("returning a body that contains the user's info if user's 2FA is disabled")
-		actual := helpers.GetMapKeys(responseBody["user"])
-		elements := helpers.GetStructFields(models.User{}, []interface{}{"password", "otp_secret_key", "phone_no"})
-		Expect(actual).To(ContainElements(elements...))
-
-		By("returning cookies if user's 2FA is disabled")
-		Expect(response.Result().Header).To(HaveKey("Set-Cookie"))
-	})
-
-	Context("", func() {
-		BeforeEach(func() {
-			OTPSecretKey = "testsecret"
-		})
-
-		It("should be a success", func() {
-			By("sending a request with valid inputs")
-			responseBody = nil
-			response, err := ExecuteRequest()
-			Expect(err).NotTo(HaveOccurred())
-
-			By("returning a status code of 204")
-			Expect(response).To(HaveHTTPStatus(http.StatusNoContent))
-
-			By("clearing token key from redis")
-			err = redisClient.Get(ctx, config.RedisResetPasswordPrefix+token).Err()
-			Expect(err).To(MatchError(redis.Nil))
-
-			By("returning an empty body if user's 2FA is enabled")
-			Expect(response).To(HaveHTTPBody([]byte(nil)))
-
-			By("not returning cookies if user's 2FA is enabled")
-			Expect(response.Result().Header).NotTo(HaveKey("Set-Cookie"))
-		})
+		By("returning a body that contains a success message")
+		Expect(responseBody).To(HaveKey("message"))
 	})
 
 	It("should be an error", func() {

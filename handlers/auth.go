@@ -244,50 +244,24 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	user := &models.User{ID: userId, Password: requestBody.Password}
+	user := &models.User{Password: requestBody.Password}
 	if err = user.HashPassword(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
 	options := models.SQLOptions{
-		Arguments:         []interface{}{user.Password, user.ID},
+		Arguments:         []interface{}{user.Password, userId},
 		AfterTableClauses: `SET password = $1 WHERE id = $2`,
-		ReturnColumns:     helpers.GenerateUserReturnColumns([]string{"id"}),
-		Destination: []interface{}{
-			&user.AverageRating,
-			&user.CreatedAt,
-			&user.Email,
-			&user.Firstname,
-			&user.Image,
-			&user.Is2FAEnabled,
-			&user.IsEmailVerified,
-			&user.IsPhoneVerified,
-			&user.Lastname,
-			&user.Password,
-			&user.PhoneNo,
-			&user.TripsCount,
-		},
+		ReturnColumns:     []string{"id"},
+		Destination:       []interface{}{&userId},
 	}
 	if response := models.UpdateAndReturnUserRow(ctx, options); response != nil {
 		c.JSON(response.StatusCode, response.Body)
 		return
 	}
 
-	if user.Is2FAEnabled {
-		c.JSON(http.StatusNoContent, nil)
-		return
-	}
-
-	accessToken, err := user.GenerateAccessToken()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-		return
-	}
-
-	user.Password = ""
-	c.SetCookie(config.AccessTokenCookieName, accessToken, config.AccessTokenTTLInSeconds, "", "", config.IsProduction, true)
-	c.JSON(http.StatusOK, gin.H{"user": user})
+	c.JSON(http.StatusOK, gin.H{"message": "Success"})
 }
 
 func VerifyLogin(c *gin.Context) {
