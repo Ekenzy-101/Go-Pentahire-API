@@ -70,6 +70,9 @@ var _ = Describe("POST /verification/email", func() {
 	AfterEach(func() {
 		_, err := pool.Exec(ctx, "DELETE FROM users")
 		Expect(err).NotTo(HaveOccurred())
+
+		err = redisClient.FlushDBAsync(ctx).Err()
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should be a success", func() {

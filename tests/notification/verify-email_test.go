@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/Ekenzy-101/Pentahire-API/models"
 	"github.com/Ekenzy-101/Pentahire-API/routes"
@@ -15,8 +16,9 @@ import (
 
 var _ = Describe("POST /notification/verify-email", func() {
 	var (
-		email        string
-		responseBody gin.H
+		email           string
+		emailVerifiedAt interface{}
+		responseBody    gin.H
 	)
 
 	var ExecuteRequest = func() (*httptest.ResponseRecorder, error) {
@@ -44,14 +46,15 @@ var _ = Describe("POST /notification/verify-email", func() {
 
 	BeforeEach(func() {
 		email = "test3@test.com"
+		emailVerifiedAt = nil
 		responseBody = gin.H{}
 	})
 
 	JustBeforeEach(func() {
 		userId := ""
 		options := models.SQLOptions{
-			Arguments:     []interface{}{email, "Test", "Test", "Test"},
-			InsertColumns: []string{"email", "password", "firstname", "lastname"},
+			Arguments:     []interface{}{email, "Test", "Test", "Test", emailVerifiedAt},
+			InsertColumns: []string{"email", "password", "firstname", "lastname", "email_verified_at"},
 			ReturnColumns: []string{"id"},
 			Destination:   []interface{}{&userId},
 		}
@@ -61,6 +64,9 @@ var _ = Describe("POST /notification/verify-email", func() {
 
 	AfterEach(func() {
 		_, err := pool.Exec(ctx, "DELETE FROM users")
+		Expect(err).NotTo(HaveOccurred())
+
+		err = redisClient.FlushDBAsync(ctx).Err()
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -87,6 +93,24 @@ var _ = Describe("POST /notification/verify-email", func() {
 
 		By("returning a body that contains error messages")
 		Expect(responseBody).To(HaveKey("email"))
+	})
+
+	Context("", func() {
+		BeforeEach(func() {
+			emailVerifiedAt = time.Now()
+		})
+
+		It("should be an error", func() {
+			By("sending a request with an email that is already verified")
+			response, err := ExecuteRequest()
+			Expect(err).NotTo(HaveOccurred())
+
+			By("returning a status code of 400")
+			Expect(response).To(HaveHTTPStatus(http.StatusBadRequest))
+
+			By("returning a body that contains error messages")
+			Expect(responseBody).To(HaveKey("email"))
+		})
 	})
 
 	It("should be an error", func() {

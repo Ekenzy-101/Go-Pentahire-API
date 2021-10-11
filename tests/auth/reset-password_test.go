@@ -63,13 +63,14 @@ var _ = Describe("POST /auth/reset-password", func() {
 			ReturnColumns: []string{"id"},
 			Destination:   []interface{}{&userId},
 		}
-		sqlResponse := models.InsertUserRow(ctx, options)
-		Expect(sqlResponse).To(BeNil())
+		response := models.InsertUserRow(ctx, options)
+		Expect(response).To(BeNil())
 
-		err := redisClient.Set(ctx, config.RedisResetPasswordPrefix+token, userId, config.RedisResetPasswordTTL).Err()
+		var err error
+		token, err = helpers.GenerateRandomToken(24)
 		Expect(err).NotTo(HaveOccurred())
 
-		token, err = helpers.GenerateRandomToken(24)
+		err = redisClient.Set(ctx, config.RedisResetPasswordPrefix+token, userId, config.RedisResetPasswordTTL).Err()
 		Expect(err).NotTo(HaveOccurred())
 	})
 
