@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Ekenzy-101/Pentahire-API/config"
@@ -15,9 +16,12 @@ func main() {
 
 	services.CreateRedisClient()
 	router := routes.SetupRouter()
-	if !config.IsDevelopment {
+	host := "127.0.0.1"
+	if config.IsProduction {
 		log.Printf("Server listening on port %v", config.Port)
+		host = ""
 	}
 
-	helpers.ExitIfError(router.Run(":" + config.Port))
+	err := router.Run(fmt.Sprintf("%v:%v", host, config.Port))
+	helpers.ExitIfError(err)
 }

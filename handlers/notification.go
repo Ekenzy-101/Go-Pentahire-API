@@ -29,10 +29,11 @@ func ForgotPassword(c *gin.Context) {
 		Arguments:         []interface{}{user.Email},
 		AfterTableClauses: "WHERE email = $1",
 		Destination: []interface{}{
+			&user.ID,
 			&user.Firstname,
 			&user.Lastname,
 		},
-		ReturnColumns: []string{"firstname", "lastname"},
+		ReturnColumns: []string{"id", "firstname", "lastname"},
 	}
 	sqlResponse := models.SelectUserRow(ctx, options)
 	if sqlResponse != nil && sqlResponse.StatusCode == http.StatusNotFound {
@@ -75,18 +76,29 @@ func VerifyEmail(c *gin.Context) {
 
 	user := &models.User{Email: requestBody.Email}
 	user.NormalizeFields(false)
+	var emailVerifiedAt interface{}
 	options := models.SQLOptions{
 		Arguments:         []interface{}{user.Email},
 		AfterTableClauses: "WHERE email = $1",
 		Destination: []interface{}{
+			&emailVerifiedAt,
 			&user.Firstname,
 			&user.Lastname,
 		},
-		ReturnColumns: []string{"firstname", "lastname"},
+		ReturnColumns: []string{"email_verified_at", "firstname", "lastname"},
 	}
-	sqlResponse := models.SelectUserRow(ctx, options)
-	if sqlResponse != nil && sqlResponse.StatusCode == http.StatusNotFound {
-		c.JSON(http.StatusNotFound, gin.H{"email": "A user with the given email doesn't exist"})
+	if response := models.SelectUserRow(ctx, options); response != nil {
+		if response.StatusCode == http.StatusNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"email": "A user with the given email doesn't exist"})
+			return
+		}
+
+		c.JSON(response.StatusCode, response.Body)
+		return
+	}
+
+	if emailVerifiedAt != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"email": "Your email has been verified"})
 		return
 	}
 

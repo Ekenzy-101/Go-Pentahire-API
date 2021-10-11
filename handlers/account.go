@@ -118,11 +118,6 @@ func UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	if requestBody.NewPassword == requestBody.OldPassword {
-		c.JSON(http.StatusBadRequest, gin.H{"new_password": "Create a new password that isn't your current password"})
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -146,6 +141,11 @@ func UpdatePassword(c *gin.Context) {
 
 	if !matches {
 		c.JSON(http.StatusBadRequest, gin.H{"old_password": "Your current password was entered incorrectly. Please enter it again"})
+		return
+	}
+
+	if requestBody.NewPassword == requestBody.OldPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"new_password": "Create a new password that isn't your current password"})
 		return
 	}
 
