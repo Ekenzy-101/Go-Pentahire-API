@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Ekenzy-101/Pentahire-API/config"
+	"github.com/Ekenzy-101/Pentahire-API/helpers"
 	"github.com/Ekenzy-101/Pentahire-API/models"
 	"github.com/Ekenzy-101/Pentahire-API/routes"
 	"github.com/Ekenzy-101/Pentahire-API/services"
@@ -17,23 +18,24 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("PUT /account/password", func() {
+var _ = Describe("PUT /account/profile", func() {
 	var (
 		accessToken  string
-		newPassword  string
-		oldPassword  string
+		email        string
+		firstname    string
+		lastname     string
 		responseBody gin.H
 		userId       string
 	)
 
 	var ExecuteRequest = func() (*httptest.ResponseRecorder, error) {
-		requestBodyMap := gin.H{"new_password": newPassword, "old_password": oldPassword}
+		requestBodyMap := gin.H{"email": email, "firstname": firstname, "lastname": lastname}
 		requestBodyBytes, err := json.Marshal(requestBodyMap)
 		if err != nil {
 			return nil, err
 		}
 
-		request, err := http.NewRequest(http.MethodPut, "/account/password", bytes.NewReader(requestBodyBytes))
+		request, err := http.NewRequest(http.MethodPut, "/account/profile", bytes.NewReader(requestBodyBytes))
 		if err != nil {
 			return nil, err
 		}
@@ -51,19 +53,20 @@ var _ = Describe("PUT /account/password", func() {
 	}
 
 	BeforeEach(func() {
-		newPassword = "Newpassword@123"
-		oldPassword = "Oldpassword@123"
+		firstname = "Test"
+		lastname = "Test"
+		email = "newemail@test.com"
 		responseBody = gin.H{}
 	})
 
 	JustBeforeEach(func() {
-		user := &models.User{Password: oldPassword}
+		user := &models.User{}
 		err := user.HashPassword()
 		Expect(err).NotTo(HaveOccurred())
 
 		options := models.SQLOptions{
-			Arguments:     []interface{}{"Test", user.Password, "Test", "Test"},
-			InsertColumns: []string{"email", "password", "firstname", "lastname"},
+			Arguments:     []interface{}{"verified@test.com", "Test", "Test", "Test", time.Now()},
+			InsertColumns: []string{"email", "password", "firstname", "lastname", "email_verified_at"},
 			ReturnColumns: []string{"id"},
 			Destination:   []interface{}{&userId},
 		}
@@ -90,12 +93,26 @@ var _ = Describe("PUT /account/password", func() {
 
 		By("returning a body that contains a success message")
 		Expect(responseBody).To(HaveKey("message"))
+
+		By("updating user profile accordingly")
+		var newFirstName, newLastName, newEmail string
+		var emailVerifiedAt interface{}
+		destination := []interface{}{&newFirstName, &newLastName, &newEmail, &emailVerifiedAt}
+		sql := "SELECT firstname, lastname, email, email_verified_at FROM users WHERE id = $1"
+		err = pool.QueryRow(ctx, sql, userId).Scan(destination...)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(firstname).To(Equal(newFirstName))
+		Expect(lastname).To(Equal(newLastName))
+		Expect(email).To(Equal(newEmail))
+		Expect(emailVerifiedAt).To(BeNil())
 	})
 
 	It("should be an error", func() {
 		By("sending a request with invalid inputs")
-		oldPassword = "invalid old password"
-		newPassword = "invalid new password"
+		lastname = ""
+		firstname = ""
+		email = "invalid email"
 		response, err := ExecuteRequest()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -103,13 +120,17 @@ var _ = Describe("PUT /account/password", func() {
 		Expect(response).To(HaveHTTPStatus(http.StatusBadRequest))
 
 		By("returning a body that contains error messages")
-		Expect(responseBody).To(HaveKey("old_password"))
-		Expect(responseBody).To(HaveKey("new_password"))
+		actual := helpers.GetMapKeys(responseBody)
+		elements := []interface{}{"email", "firstname", "lastname"}
+		Expect(actual).To(ContainElements(elements...))
 	})
 
 	It("should be an error", func() {
-		By("sending a request with old and new passwords that match")
-		newPassword = oldPassword
+		By("sending a request with an email address that does exist")
+		email = "doesexist@test.com"
+		_, err := pool.Exec(ctx, "INSERT INTO users (email, firstname, lastname, password) VALUES ($1, '', '', '')", email)
+		Expect(err).NotTo(HaveOccurred())
+
 		response, err := ExecuteRequest()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -117,20 +138,7 @@ var _ = Describe("PUT /account/password", func() {
 		Expect(response).To(HaveHTTPStatus(http.StatusBadRequest))
 
 		By("returning a body that contains error messages")
-		Expect(responseBody).To(HaveKey("new_password"))
-	})
-
-	It("should be an error", func() {
-		By("sending a request with an old password that doesn't match")
-		oldPassword = "Notmatch@123"
-		response, err := ExecuteRequest()
-		Expect(err).NotTo(HaveOccurred())
-
-		By("returning a status code of 400")
-		Expect(response).To(HaveHTTPStatus(http.StatusBadRequest))
-
-		By("returning a body that contains error messages")
-		Expect(responseBody).To(HaveKey("old_password"))
+		Expect(responseBody).To(HaveKey("message"))
 	})
 
 	It("should be a error", func() {
