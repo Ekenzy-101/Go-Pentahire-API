@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Ekenzy-101/Pentahire-API/helpers"
@@ -166,5 +168,59 @@ func UpdatePassword(c *gin.Context) {
 }
 
 func UpdateProfile(c *gin.Context) {
+	authUser := c.MustGet("user")
+	cliams := authUser.(*services.AccessTokenClaims)
+	requestBody := &UpdateProfileRequestBody{}
+	if messages := helpers.ValidateRequestBody(c, requestBody); messages != nil {
+		c.JSON(http.StatusBadRequest, messages)
+		return
+	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user := &models.User{ID: cliams.ID}
+	options := models.SQLOptions{
+		Arguments:         []interface{}{user.ID},
+		AfterTableClauses: "WHERE id = $1",
+		ReturnColumns:     []string{"email"},
+		Destination:       []interface{}{&user.Email},
+	}
+	response := models.SelectUserRow(ctx, options)
+	if response != nil {
+		c.JSON(response.StatusCode, response.Body)
+		return
+	}
+
+	isSameEmail := strings.ToLower(requestBody.Email) == user.Email
+	if isSameEmail {
+		options.AfterTableClauses = "SET firstname = $1, lastname = $2 WHERE id = $3"
+		options.Arguments = []interface{}{requestBody.Firstname, requestBody.Lastname, user.ID}
+	} else {
+		options.AfterTableClauses = "SET firstname = $1, lastname = $2, email = $3, email_verified_at = $4 WHERE id = $5"
+		options.Arguments = []interface{}{requestBody.Firstname, requestBody.Lastname, requestBody.Email, nil, user.ID}
+	}
+
+	response = models.UpdateAndReturnUserRow(ctx, options)
+	fmt.Println(response)
+	if response != nil {
+		c.JSON(response.StatusCode, response.Body)
+		return
+	}
+
+	if !isSameEmail {
+		token, err := helpers.GenerateRandomToken(24)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		err = user.SendEmailVerificationMail(token)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Success"})
 }

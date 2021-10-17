@@ -8,6 +8,11 @@ type EmailField struct {
 	Email string `json:"email" binding:"email,max=255"`
 }
 
+type NameFields struct {
+	Firstname string `json:"firstname" binding:"required,name,max=50"`
+	Lastname  string `json:"lastname" binding:"required,name,max=50"`
+}
+
 type PasswordField struct {
 	Password string `json:"password" binding:"required,min=8,max=128,password"`
 }
@@ -22,8 +27,7 @@ type LoginRequestBody struct {
 }
 
 type RegisterRequestBody struct {
-	Firstname string `json:"firstname" binding:"required,name,max=50"`
-	Lastname  string `json:"lastname" binding:"required,name,max=50"`
+	NameFields
 	TokenField
 	LoginRequestBody
 }
@@ -31,6 +35,11 @@ type RegisterRequestBody struct {
 type ResetPasswordRequestBody struct {
 	TokenField
 	PasswordField
+}
+
+type UpdateProfileRequestBody struct {
+	NameFields
+	EmailField
 }
 
 type UpdatePasswordRequestBody struct {

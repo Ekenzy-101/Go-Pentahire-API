@@ -69,6 +69,14 @@ func UpdateAndReturnUserRow(ctx context.Context, options SQLOptions) *SQLRespons
 	sql := buildQuery(options)
 	pool := services.GetPostgresConnectionPool()
 	err := pool.QueryRow(ctx, sql, options.Arguments...).Scan(options.Destination...)
+	pgErr := new(pgconn.PgError)
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return &SQLResponse{
+			StatusCode: http.StatusBadRequest,
+			Body:       gin.H{"message": "A user with the given email already exists"},
+		}
+	}
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &SQLResponse{
 			StatusCode: http.StatusNotFound,

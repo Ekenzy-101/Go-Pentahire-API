@@ -81,11 +81,12 @@ func VerifyEmail(c *gin.Context) {
 		Arguments:         []interface{}{user.Email},
 		AfterTableClauses: "WHERE email = $1",
 		Destination: []interface{}{
+			&user.ID,
 			&emailVerifiedAt,
 			&user.Firstname,
 			&user.Lastname,
 		},
-		ReturnColumns: []string{"email_verified_at", "firstname", "lastname"},
+		ReturnColumns: []string{"id", "email_verified_at", "firstname", "lastname"},
 	}
 	if response := models.SelectUserRow(ctx, options); response != nil {
 		if response.StatusCode == http.StatusNotFound {
