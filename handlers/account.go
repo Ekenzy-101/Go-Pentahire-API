@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Ekenzy-101/Pentahire-API/config"
 	"github.com/Ekenzy-101/Pentahire-API/helpers"
 	"github.com/Ekenzy-101/Pentahire-API/models"
 	"github.com/Ekenzy-101/Pentahire-API/services"
@@ -210,6 +211,13 @@ func UpdateProfile(c *gin.Context) {
 
 	if !isSameEmail {
 		token, err := helpers.GenerateRandomToken(24)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		redisClient := services.GetRedisClient()
+		err = redisClient.Set(ctx, config.RedisVerifyEmailPrefix+token, user.ID, config.RedisVerifyEmailTTL).Err()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
