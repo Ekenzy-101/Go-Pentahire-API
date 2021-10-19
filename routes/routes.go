@@ -45,9 +45,12 @@ func SetupRouter() *gin.Engine {
 	authRouter.POST("/register", handlers.Register)
 	authRouter.POST("/reset-password", handlers.ResetPassword)
 
-	notification := router.Group("/notification")
-	notification.POST("/verify-email", handlers.VerifyEmail)
-	notification.POST("/forgot-password", handlers.ForgotPassword)
+	notificationRouter := router.Group("/notification")
+	notificationRouter.POST("/verify-email", handlers.VerifyEmail)
+	notificationRouter.POST("/forgot-password", handlers.ForgotPassword)
+
+	vehicleRouter := router.Group("/vehicles")
+	vehicleRouter.GET("/:id", handlers.GetVehicle)
 
 	verificationRouter := router.Group("/verification")
 	verificationRouter.POST("/email", handlers.EmailVerification)
