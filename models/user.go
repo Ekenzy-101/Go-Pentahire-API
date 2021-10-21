@@ -41,6 +41,8 @@ type User struct {
 	Password        string    `json:"password,omitempty"`
 	ReviewsCount    int       `json:"reviews_count"`
 	TripsCount      int       `json:"trips_count"`
+	Vehicles        []gin.H   `json:"vehicles,omitempty"`
+	// TODO: host and guest reviews_count, reviews, average_rating
 }
 
 func (user *User) NormalizeFields(new bool) {

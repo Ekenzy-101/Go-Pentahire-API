@@ -39,7 +39,7 @@ func GetVehicle(c *gin.Context) {
 		v.name,
 		v.rental_fee,
 		v.reviews_count,
-		to_jsonb(u) as user, 
+		to_jsonb(u) AS user, 
 		v.trips_count
 	FROM vehicles AS v 
 	JOIN cte_users AS u ON v.user_id = u.id 

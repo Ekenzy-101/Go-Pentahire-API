@@ -49,6 +49,9 @@ func SetupRouter() *gin.Engine {
 	notificationRouter.POST("/verify-email", handlers.VerifyEmail)
 	notificationRouter.POST("/forgot-password", handlers.ForgotPassword)
 
+	userRouter := router.Group("/users")
+	userRouter.GET("/:id", handlers.GetUser)
+
 	vehicleRouter := router.Group("/vehicles")
 	vehicleRouter.GET("/:id", handlers.GetVehicle)
 
