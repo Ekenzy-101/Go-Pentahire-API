@@ -39,6 +39,7 @@ type User struct {
 	OTPSecretKey    string    `json:"otp_secret_key,omitempty"`
 	PhoneNo         string    `json:"phone_no,omitempty"`
 	Password        string    `json:"password,omitempty"`
+	ReviewsCount    int       `json:"reviews_count"`
 	TripsCount      int       `json:"trips_count"`
 }
 

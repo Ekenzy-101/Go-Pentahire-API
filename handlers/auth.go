@@ -44,6 +44,7 @@ func Login(c *gin.Context) {
 			&user.Lastname,
 			&user.Password,
 			&user.PhoneNo,
+			&user.ReviewsCount,
 			&user.TripsCount,
 		},
 	}
@@ -136,6 +137,7 @@ func Me(c *gin.Context) {
 			&user.IsPhoneVerified,
 			&user.Lastname,
 			&user.PhoneNo,
+			&user.ReviewsCount,
 			&user.TripsCount,
 		},
 	}
@@ -316,6 +318,7 @@ func VerifyLogin(c *gin.Context) {
 			&user.IsPhoneVerified,
 			&user.Lastname,
 			&user.PhoneNo,
+			&user.ReviewsCount,
 			&user.TripsCount,
 			&secret,
 		},

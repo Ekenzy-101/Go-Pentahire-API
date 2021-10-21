@@ -29,6 +29,7 @@ func GetVehicle(c *gin.Context) {
   	SELECT id, firstname, created_at, image, trips_count FROM users
 	)
 	SELECT v.id, 
+		v.address,
 		v.average_rating, 
 		v.created_at,
 		v.is_rented,
@@ -46,6 +47,7 @@ func GetVehicle(c *gin.Context) {
 	vehicle := &models.Vehicle{Location: &models.Location{}}
 	destination := []interface{}{
 		&vehicle.ID,
+		&vehicle.Address,
 		&vehicle.AverageRating,
 		&vehicle.CreatedAt,
 		&vehicle.IsRented,

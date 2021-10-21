@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone_no TEXT DEFAULT '' NOT NULL,
   phone_verified_at TIMESTAMPTZ,
   otp_secret_key TEXT DEFAULT '' NOT NULL,
+  reviews_count INT DEFAULT 0 NOT NULL,
   trips_count INT DEFAULT 0 NOT NULL
 );
 

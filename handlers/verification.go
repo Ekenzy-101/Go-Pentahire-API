@@ -56,7 +56,3 @@ func EmailVerification(c *gin.Context) {
 func PhoneVerification(c *gin.Context) {
 
 }
-
-func LoginVerification(c *gin.Context) {
-
-}

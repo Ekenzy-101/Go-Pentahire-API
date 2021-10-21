@@ -76,6 +76,7 @@ func GenerateUserReturnColumns(excludedColumns []string) []string {
 		"lastname",
 		"password",
 		"phone_no",
+		"reviews_count",
 		"trips_count",
 	}
 
