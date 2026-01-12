@@ -22,8 +22,8 @@ var (
 	ctx         = context.Background()
 
 	_ = BeforeSuite(func() {
-		pool = services.CreatePostgresConnectionPool()
-		redisClient = services.CreateRedisClient()
+		pool = services.CreatePostgresConnectionPool(ctx)
+		redisClient = services.CreateRedisClient(ctx)
 	})
 
 	_ = AfterSuite(func() {

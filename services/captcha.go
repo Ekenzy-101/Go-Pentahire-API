@@ -12,7 +12,7 @@ import (
 	"github.com/Ekenzy-101/Pentahire-API/config"
 )
 
-type HCaptchaResponseBody struct {
+type CaptchaResponse struct {
 	ChallengeTimestamp time.Time `json:"challenge_ts"`
 	Credit             bool      `json:"credit"`
 	ErrorCodes         []string  `json:"error-codes"`
@@ -20,10 +20,10 @@ type HCaptchaResponseBody struct {
 	Success            bool      `json:"success"`
 }
 
-func VerifyHCaptchaToken(ctx context.Context, token string) (*HCaptchaResponseBody, error) {
+func VerifyCaptchaToken(ctx context.Context, token string) (*CaptchaResponse, error) {
 	const verifyURL = "https://hcaptcha.com/siteverify"
 	formData := url.Values{}
-	formData.Set("secret", config.HCaptchaSecretKey)
+	formData.Set("secret", config.CaptchaSecretKey)
 	formData.Set("response", token)
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, verifyURL, strings.NewReader(formData.Encode()))
 	if err != nil {
@@ -38,7 +38,7 @@ func VerifyHCaptchaToken(ctx context.Context, token string) (*HCaptchaResponseBo
 		return nil, err
 	}
 
-	responseBody := &HCaptchaResponseBody{}
+	responseBody := &CaptchaResponse{}
 	err = json.NewDecoder(response.Body).Decode(responseBody)
 	if err != nil {
 		return nil, err

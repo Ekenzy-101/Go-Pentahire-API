@@ -14,20 +14,18 @@ var (
 	connectionPool *pgxpool.Pool
 )
 
-func CreatePostgresConnectionPool() *pgxpool.Pool {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func CreatePostgresConnectionPool(ctx context.Context) *pgxpool.Pool {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	var err error
-	connectionPool, err = pgxpool.Connect(ctx, config.DatabaseURL)
+	connectionPool, err := pgxpool.Connect(ctx, config.DatabaseURL)
 	helpers.ExitIfError(err)
 
-	err = connectionPool.Ping(ctx)
-	helpers.ExitIfError(err)
-
+	helpers.ExitIfError(connectionPool.Ping(ctx))
 	if !config.IsTesting {
 		log.Println("Successfully connected to PostgreSQL database")
 	}
+
 	return connectionPool
 }
 

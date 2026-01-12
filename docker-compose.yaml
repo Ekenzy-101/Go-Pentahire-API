@@ -1,0 +1,31 @@
+services:
+  redis:
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    image: redis:8.0
+    ports:
+      - 6379:6379
+    restart: always
+
+  postgres:
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    image: postgres:17.6
+    ports:
+      - 5678:5678
+    restart: always

@@ -28,7 +28,6 @@ type passwordConfig struct {
 type User struct {
 	ID              string    `json:"id"`
 	AverageRating   float64   `json:"average_rating"`
-	CreatedAt       time.Time `json:"created_at"`
 	Email           string    `json:"email,omitempty"`
 	Firstname       string    `json:"firstname,omitempty"`
 	Image           string    `json:"image"`
@@ -42,14 +41,17 @@ type User struct {
 	ReviewsCount    int       `json:"reviews_count"`
 	TripsCount      int       `json:"trips_count"`
 	Vehicles        []gin.H   `json:"vehicles,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 	// TODO: host and guest reviews_count, reviews, average_rating
 }
 
 func (user *User) NormalizeFields(new bool) {
 	user.Email = strings.ToLower(user.Email)
 	if new {
-		user.CreatedAt = time.Now()
 		user.AverageRating = 0.0
+		user.CreatedAt = time.Now()
+		user.UpdatedAt = time.Now()
 	}
 }
 

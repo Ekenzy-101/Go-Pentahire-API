@@ -160,14 +160,14 @@ func Register(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	hCaptchaResponseBody, err := services.VerifyHCaptchaToken(ctx, requestBody.Token)
+	captchaResponse, err := services.VerifyCaptchaToken(ctx, requestBody.Token)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
-	log.Println("HCaptchaErrorCodes", hCaptchaResponseBody.ErrorCodes)
-	if !hCaptchaResponseBody.Success {
+	log.Println("HCaptchaErrorCodes", captchaResponse.ErrorCodes)
+	if !captchaResponse.Success {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Please provide a valid hcaptcha token"})
 		return
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -11,10 +12,12 @@ import (
 )
 
 func main() {
-	pool := services.CreatePostgresConnectionPool()
+	ctx := context.Background()
+
+	pool := services.CreatePostgresConnectionPool(ctx)
 	defer pool.Close()
 
-	services.CreateRedisClient()
+	services.CreateRedisClient(ctx)
 	router := routes.SetupRouter()
 	host := "127.0.0.1"
 	if config.IsProduction {

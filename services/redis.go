@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/Ekenzy-101/Pentahire-API/config"
@@ -13,15 +14,19 @@ var (
 	redisClient *redis.Client
 )
 
-func CreateRedisClient() *redis.Client {
+func CreateRedisClient(ctx context.Context) *redis.Client {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
 	options, err := redis.ParseURL(config.RedisURL)
 	helpers.ExitIfError(err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	redisClient = redis.NewClient(options)
 	helpers.ExitIfError(redisClient.Ping(ctx).Err())
+	if !config.IsTesting {
+		log.Println("Successfully connected to Redis database")
+	}
+
 	return redisClient
 }
 
